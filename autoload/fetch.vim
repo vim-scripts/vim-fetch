@@ -4,19 +4,27 @@
 let s:specs = {}
 
 " - trailing colon, i.e. ':lnum[:colnum[:]]'
-"   trigger with '*:*' pattern
-let s:specs.colon = {'pattern': '\m\%(:\d\+\)\+:\?$'}
+"   trigger with '*:[0123456789]*' pattern
+let s:specs.colon = {'pattern': '\m\%(:\d\+\)\{1,2}:\?$'}
 function! s:specs.colon.parse(file) abort
   return [substitute(a:file, self.pattern, '', ''),
         \ split(matchstr(a:file, self.pattern), ':')]
 endfunction
 
 " - trailing parentheses, i.e. '(lnum[:colnum])'
-"   trigger with '*(*)' pattern
-let s:specs.paren = {'pattern': '\m\(\(\d\+\%(:\d\+\)\?\))$'}
+"   trigger with '*([0123456789]*)' pattern
+let s:specs.paren = {'pattern': '\m(\(\d\+\%(:\d\+\)\?\))$'}
 function! s:specs.paren.parse(file) abort
   return [substitute(a:file, self.pattern, '', ''),
         \ split(matchlist(a:file, self.pattern)[1], ':')]
+endfunction
+
+" - Plan 9 type line spec, i.e. '[:]#lnum'
+"   trigger with '*#[0123456789]*' pattern
+let s:specs.plan9 = {'pattern': '\m:#\(\d\+\)$'}
+function! s:specs.plan9.parse(file) abort
+  return [substitute(a:file, self.pattern, '', ''),
+        \ [matchlist(a:file, self.pattern)[1]]]
 endfunction
 
 " Edit {file}, placing the cursor at the line and column indicated by {spec}:
@@ -42,8 +50,8 @@ function! fetch#edit(file, spec) abort
   if has('listcmds')
     let l:argidx = index(argv(), a:file)
     if  l:argidx isnot -1   " substitute un-spec'ed file for spec'ed
-      execute 'argdelete' a:file
-      execute l:argidx.'argadd' l:file
+      execute 'argdelete' fnameescape(a:file)
+      execute l:argidx.'argadd' fnameescape(l:file)
     endif
     if index(argv(), l:file) isnot -1
       let l:cmd .= 'arg'    " set arglist index to edited file
